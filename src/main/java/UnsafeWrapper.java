@@ -1,11 +1,43 @@
-package sparkresearch;
-
 import java.lang.reflect.Field;
-
 import sun.misc.Unsafe;
+import java.util.*;
+
 
 public final class UnsafeWrapper {
 
+  // this is the jvm unsafe object, visible only within the class
+  private static final Unsafe _UNSAFE;
+
+  static {
+    // grab the unsafe class during load time using static call
+    sun.misc.Unsafe unsafe;
+    try {
+      Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+      unsafeField.setAccessible(true);
+      unsafe = (sun.misc.Unsafe) unsafeField.get(null);
+    } catch (Throwable cause) {
+      unsafe = null;
+    }
+    _UNSAFE = unsafe;
+
+    if (_UNSAFE != null) {
+      BYTE_ARRAY_OFFSET = _UNSAFE.arrayBaseOffset(byte[].class);
+      INT_ARRAY_OFFSET = _UNSAFE.arrayBaseOffset(int[].class);
+      LONG_ARRAY_OFFSET = _UNSAFE.arrayBaseOffset(long[].class);
+      DOUBLE_ARRAY_OFFSET = _UNSAFE.arrayBaseOffset(double[].class);
+    } else {
+      BYTE_ARRAY_OFFSET = 0;
+      INT_ARRAY_OFFSET = 0;
+      LONG_ARRAY_OFFSET = 0;
+      DOUBLE_ARRAY_OFFSET = 0;
+    }
+  }
+
+  public static final int BYTE_ARRAY_OFFSET;
+  public static final int INT_ARRAY_OFFSET;
+  public static final int LONG_ARRAY_OFFSET;
+  public static final int DOUBLE_ARRAY_OFFSET;
+  private static final long UNSAFE_COPY_THRESHOLD = 1024L * 1024L;
 
   public static final class UNSAFE {
 
@@ -77,46 +109,6 @@ public final class UnsafeWrapper {
 
   }
 
-  public static final Unsafe _UNSAFE;
-
-  public static final int BYTE_ARRAY_OFFSET;
-
-  public static final int INT_ARRAY_OFFSET;
-
-  public static final int LONG_ARRAY_OFFSET;
-
-  public static final int DOUBLE_ARRAY_OFFSET;
-
-  /**
-   * Limits the number of bytes to copy per {@link Unsafe#copyMemory(long, long, long)} to
-   * allow safepoint polling during a large copy.
-   */
-  private static final long UNSAFE_COPY_THRESHOLD = 1024L * 1024L;
-
-  static {
-    sun.misc.Unsafe unsafe;
-    try {
-      Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-      unsafeField.setAccessible(true);
-      unsafe = (sun.misc.Unsafe) unsafeField.get(null);
-    } catch (Throwable cause) {
-      unsafe = null;
-    }
-    _UNSAFE = unsafe;
-
-    if (_UNSAFE != null) {
-      BYTE_ARRAY_OFFSET = _UNSAFE.arrayBaseOffset(byte[].class);
-      INT_ARRAY_OFFSET = _UNSAFE.arrayBaseOffset(int[].class);
-      LONG_ARRAY_OFFSET = _UNSAFE.arrayBaseOffset(long[].class);
-      DOUBLE_ARRAY_OFFSET = _UNSAFE.arrayBaseOffset(double[].class);
-    } else {
-      BYTE_ARRAY_OFFSET = 0;
-      INT_ARRAY_OFFSET = 0;
-      LONG_ARRAY_OFFSET = 0;
-      DOUBLE_ARRAY_OFFSET = 0;
-    }
-  }
-
   static public void copyMemory(
       Object src,
       long srcOffset,
@@ -153,29 +145,32 @@ public void testDirectIntArray() throws Exception {
 }*/
 
 
-  public static void main(String[] args) throws InstantiationException {
+  public static void test(String[] args) throws InstantiationException {
     /* let us try to play with this */
     DirectIntArray directIntArray = new DirectIntArray(100);
-    directIntArray.setValue(0L, 10);
-    directIntArray.setValue(1L, 20);
-    
-    System.out.print ("Finish\n");
-    System.out.format("get value %d, %d\n", directIntArray.getValue(0L),
-                                            directIntArray.getValue(1L));
-    directIntArray.destroy();
 
-    DirectIntArray d2 = (DirectIntArray)UnsafeWrapper._UNSAFE.allocateInstance(DirectIntArray.class);
-    System.out.format("index is %d\n", d2.getIndex());
+    for (int i = 0; i < 100; i++) {
+      directIntArray.setValue(i, 10 * i);
+    }
+
+    System.out.print ("%%%%%% Finish setting\n");
+
+    for (int i = 0; i < 100; i++) {
+      System.out.format("At index %d, val is %d\n", i, directIntArray.getValue(i));
+    }
+    directIntArray.destroy();
   }
 }
 
 
 
-class DirectIntArray {
+class DirectIntArray implements Iterable<Integer> {
 
   private final static long INT_SIZE_IN_BYTES = 4;
 
   private final long startIndex;
+
+  private final long size;
 
   public long getIndex() {return startIndex;}
 
@@ -184,6 +179,7 @@ class DirectIntArray {
   }
 
   public DirectIntArray(long size) {
+    this.size = size;
     startIndex = UnsafeWrapper.UNSAFE.allocateMemory(size * INT_SIZE_IN_BYTES);
     // unsafe.setMemory(startIndex, size * INT_SIZE_IN_BYTES, (byte) 0);
   }
@@ -198,6 +194,33 @@ class DirectIntArray {
 
   public void destroy() {
     UnsafeWrapper.UNSAFE.freeMemory(startIndex);
+  }
+
+
+  class UnsafeIterator implements Iterator<Integer> {
+      int current = 0;
+      public boolean hasNext() {
+          if (current < DirectIntArray.this.size) {
+              return true;
+          } else {
+              return false;
+          }
+      }
+      public Integer next() {
+          if (!hasNext()) {
+              throw new NoSuchElementException();
+          }
+          return (Integer)(DirectIntArray.this.getValue(current++));
+      }
+  }
+
+/*  public PrimitiveIterator.OfInt iterator()
+  {
+    return 
+  }*/
+
+  public Iterator<Integer> iterator() {
+      return new UnsafeIterator();
   }
 
 }
