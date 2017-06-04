@@ -10,7 +10,7 @@ import java.beans._
 import scala.reflect.ClassTag
 
 object MDD {
-  def initHandle(handle: UnsafeGenericHandle, index: Int, 
+  def initHandle(handle: UnsafeGenericHandle, index: Int,
                fieldType: TypeToken[_], target: Any): Unit = {
     fieldType.getRawType match
     {
@@ -72,7 +72,7 @@ object MDD {
 
   def toMDD(src: Iterator[_], className: String): Iterator[UnsafeGenericHandle] = {
     val target = Class.forName(className, true, Option(Thread.currentThread().getContextClassLoader)
-                          .getOrElse(getClass.getClassLoader))      
+                          .getOrElse(getClass.getClassLoader))
     //val target: Class[_] = classOf[Player]
     val typetoken = TypeToken.of(target)
     val beanInfo = Introspector.getBeanInfo(typetoken.getRawType())
@@ -81,7 +81,7 @@ object MDD {
     src.map{elem =>
       //println("Inside partition conversion")
       val unsafe = new UnsafeGenericHandle(properties.length)
-      conversions.map{ case (index, p) => MDD.initHandle(unsafe, index, 
+      conversions.map{ case (index, p) => MDD.initHandle(unsafe, index,
                                                               typetoken.method(p.getReadMethod).getReturnType,
                                                               p.getReadMethod.invoke(elem).asInstanceOf[Any]) }
       /*println("Age is %d".format(unsafe.getInt(0)))
@@ -101,19 +101,21 @@ abstract class MDD[T : ClassTag] extends java.io.Serializable {
 
   
   protected def toHandle(src: Iterator[T], className: String): Iterator[UnsafeGenericHandle]
-  //protected def toHandle (v : T) : UnsafeGenericHandle
+
+
   def copyIn (input : RDD[T]) : Unit = {
     if (rDD != null) {
       throw new RuntimeException("MDD already occupied")
     }
-    //val source: Class[_] = 
+    //val source: Class[_] =
     val className = implicitly[ClassTag[T]].runtimeClass.getName
     rDD = input.mapPartitions(iter => {
       toHandle(iter, className)
     }, true)
   }
 
-/*  protected def toValue (handle : UnsafeGenericHandle) : T
+  protected def toValue (handle : UnsafeGenericHandle) : T
+
   def copyOut () : RDD[T] = {
     if (rDD == null) {
       throw new RuntimeException("MDD not occupied")
@@ -121,16 +123,13 @@ abstract class MDD[T : ClassTag] extends java.io.Serializable {
     rDD.mapPartitions(iter => {
       iter.map(toValue)
     }, true)
-  }*/
+  }
 
 
 
   def inPlace (f : UnsafeGenericHandle => UnsafeGenericHandle) : Unit = {
-    rDD = rDD.map(elem => f(elem))
+    rDD = rDD.map(f)
   }
 
-/*  def inPlace (f : UnsafeGenericHandle => Unit) : Unit = {
-    rDD.foreachPartition(_.map(f))
-  }*/
 }
 
