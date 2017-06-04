@@ -2,6 +2,7 @@ package research
 
 
 import research.MDD._
+import research.UserMDD
 
 
 import scala.beans.BeanProperty
@@ -108,72 +109,25 @@ object TestMDD {
 	    
 	    println("^^^^^^^^^^^^^^^^^^^^^ Entering TESTING ROUTINE")
 	    val players = (0 until 1000).map(index => new Player(index, index * 1.0, index * 7.0))
-	    
 
 	    var rdd = sc.parallelize(players)
-
-/*	    for (i <- 0 until 200) {
-	    	rdd = rdd.map{ elem =>
-	    		val newElem = new Player(elem)
-	    		newElem.setAge(newElem.getAge() + 1)
-	    		newElem
-	    	}
-	    }
-		val taken = rdd.take(1000)
-		taken.map(elem => println("Age is %d".format(elem.getAge)))*/
-
-/*	    val rdd2 = rdd.map{elem => 
-	    	val newElem = new Player(elem)
-	    	newElem.setAge(-100)
-	    	newElem
-	    }
-
-		val taken = rdd.take(10)
-		taken.map(elem => println("Age is %d".format(elem.getAge)))
-
-		val taken2 = rdd2.take(10)
-		taken2.map(elem => println("Age is %d".format(elem.getAge)))*/
-
-		/* result both print -10 */
-		/* This is a dangerous discovery. References are carried forward without re-allocation. 
-		 * Thus, if I modify a downstream rdd, an upstream cached RDD will be affected
-		 */
-
-
 	    val source: Class[_] = classOf[Player]
 	    val className = source.getName
 
 	    /* note we map by partition to avoid repeated lookup of class meta info */
 
-	    val mutableUnsafeRDD = rdd.mapPartitions { iter =>
-	    	MDD.toMDD(iter, className)
+	    val mdd1 = new UserMDD[Player]
+	    mdd1.copyIn(rdd)
+
+	    for (i <- 0 until 7) {
+		    mdd1.inPlace{ elem => 
+	    		elem.setInt(0, elem.getInt(0) + 1)
+	    		elem
+		    }
 	    }
 
-	    var num = mutableUnsafeRDD.count()
-	    println("there are %d".format(num))
-
-
-	    val intermediary = mutableUnsafeRDD.map{elem => 
-    		elem.setInt(0, 1000)
-    		elem
-	    }
-	    val normalRDD = intermediary.map{elem => 
-    		val first: Int = elem.getInt(0)
-    		first
-	    }
-
-	    val taken2 = mutableUnsafeRDD.take(10)
-	    println("~~~~~~~~~~~~~~~~~~~~~~~~~~  try to take")
-	    val taken = normalRDD.take(10)
-	    println("normal one")
-
-
-	    taken.map(elem => println("expect 1000: %d".format(elem)))
-	    println("special one")
-	    println("length is %d".format(taken2.length))
-	    for (i <- taken2) {
-	    	println("what is this %d", i.getInt(0))
-	    }
+	    val taken = mdd1.rDD.take(10)
+	    taken.map(elem => println(elem.getInt(0)))
 
 		println("End of mock")
 	}

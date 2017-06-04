@@ -6,28 +6,34 @@ import com.google.common.reflect.TypeToken
 
 import scala.reflect.ClassTag
 
-/**
-  * Created by zixiong on 6/4/17.
-  */
+import org.apache.spark.rdd.RDD
+
+
+
 class UserMDD[T](implicit tag: ClassTag[T]) extends MDD[T] {
-  private val target: Class[_] = tag.runtimeClass
-  private val typetoken = TypeToken.of(target)
-  private val beanInfo = Introspector.getBeanInfo(typetoken.getRawType)
-  private val properties = beanInfo.getPropertyDescriptors.filterNot(_.getName == "class")
-  private val conversions = (0 until properties.length).zip(properties)
 
-  def toHandle(v: T): UnsafeGenericHandle = {
-    val unsafe = new UnsafeGenericHandle(properties.length)
-    conversions.foreach { case (index, p) => initHandle(unsafe, index,
-      typetoken.method(p.getReadMethod).getReturnType,
-      p.getReadMethod.invoke(v).asInstanceOf[Any])
+  def toHandle(src: Iterator[T], className: String): Iterator[UnsafeGenericHandle] = {
+    /* the classloading info needs to be discovered in each partition */
+    val target = Class.forName(className, true, Option(Thread.currentThread().getContextClassLoader)
+                      .getOrElse(getClass.getClassLoader))      
+    //val target: Class[_] = classOf[Player]
+    val typetoken = TypeToken.of(target)
+    val beanInfo = Introspector.getBeanInfo(typetoken.getRawType())
+    val properties = beanInfo.getPropertyDescriptors.filterNot(_.getName == "class")
+    val conversions = (0 until properties.length).zip(properties)
+    src.map{elem =>
+      //println("Inside partition conversion")
+      val unsafe = new UnsafeGenericHandle(properties.length)
+      conversions.map{ case (index, p) => initHandle(unsafe, index, 
+                                                     typetoken.method(p.getReadMethod).getReturnType,
+                                                     p.getReadMethod.invoke(elem).asInstanceOf[Any]) }
+      unsafe
     }
-    unsafe
   }
 
-  def toValue(handle: UnsafeGenericHandle): T = {
+/*  def toValue(handle: UnsafeGenericHandle): T = {
 
-  }
+  }*/
 
   private def initHandle(handle: UnsafeGenericHandle, index: Int,
                  fieldType: TypeToken[_], target: Any): Unit = {
@@ -81,6 +87,33 @@ class UserMDD[T](implicit tag: ClassTag[T]) extends MDD[T] {
     }
   }
 
+/*  def copyOut () : RDD[T] = {
+    if (rDD == null) {
+      throw new RuntimeException("MDD not occupied")
+    }
+    rDD.mapPartitions(iter => {
+      iter.map(toValue)
+    }, true)
+  }*/
+}
+
+
+/*class UserMDD[T](implicit tag: ClassTag[T]) extends MDD[T] {
+
+  def toHandle(v: T): UnsafeGenericHandle = {
+    val unsafe = new UnsafeGenericHandle(properties.length)
+    conversions.foreach { case (index, p) => initHandle(unsafe, index,
+      typetoken.method(p.getReadMethod).getReturnType,
+      p.getReadMethod.invoke(v).asInstanceOf[Any])
+    }
+    unsafe
+  }
+
+
+
+
+
 
 
 }
+*/

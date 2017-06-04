@@ -6,7 +6,6 @@ import research.UnsafeGenericHandle
 
 import com.google.common.reflect.TypeToken
 import java.beans._
-import scala.beans.BeanProperty
 
 import scala.reflect.ClassTag
 
@@ -94,45 +93,28 @@ object MDD {
 }
 
 
-
 /**
   * Created by zixiong on 6/4/17.
   */
-class MDD[T: ClassTag] {
+abstract class MDD[T : ClassTag] extends java.io.Serializable {
   var rDD : RDD[UnsafeGenericHandle] = null
 
-  def toHandle(src: Iterator[T], className: String): Iterator[UnsafeGenericHandle] = {
-    val target = Class.forName(className, true, Option(Thread.currentThread().getContextClassLoader)
-                          .getOrElse(getClass.getClassLoader))      
-    //val target: Class[_] = classOf[Player]
-    val typetoken = TypeToken.of(target)
-    val beanInfo = Introspector.getBeanInfo(typetoken.getRawType())
-    val properties = beanInfo.getPropertyDescriptors.filterNot(_.getName == "class")
-    val conversions = (0 until properties.length).zip(properties)
-    src.map{elem =>
-      //println("Inside partition conversion")
-      val unsafe = new UnsafeGenericHandle(properties.length)
-      conversions.map{ case (index, p) => MDD.initHandle(unsafe, index, 
-                                                              typetoken.method(p.getReadMethod).getReturnType,
-                                                              p.getReadMethod.invoke(elem).asInstanceOf[Any]) }
-      unsafe
-    }
-  }
-
-  //protected def toValue (handle : UnsafeGenericHandle) : T
-
+  
+  protected def toHandle(src: Iterator[T], className: String): Iterator[UnsafeGenericHandle]
+  //protected def toHandle (v : T) : UnsafeGenericHandle
   def copyIn (input : RDD[T]) : Unit = {
     if (rDD != null) {
       throw new RuntimeException("MDD already occupied")
     }
     //val source: Class[_] = 
-    val className = classOf[T].getName
+    val className = implicitly[ClassTag[T]].runtimeClass.getName
     rDD = input.mapPartitions(iter => {
       toHandle(iter, className)
     }, true)
   }
 
-/*  def copyOut () : RDD[T] = {
+/*  protected def toValue (handle : UnsafeGenericHandle) : T
+  def copyOut () : RDD[T] = {
     if (rDD == null) {
       throw new RuntimeException("MDD not occupied")
     }
@@ -140,4 +122,15 @@ class MDD[T: ClassTag] {
       iter.map(toValue)
     }, true)
   }*/
+
+
+
+  def inPlace (f : UnsafeGenericHandle => UnsafeGenericHandle) : Unit = {
+    rDD = rDD.map(elem => f(elem))
+  }
+
+/*  def inPlace (f : UnsafeGenericHandle => Unit) : Unit = {
+    rDD.foreachPartition(_.map(f))
+  }*/
 }
+
