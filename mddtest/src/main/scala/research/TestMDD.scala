@@ -24,8 +24,12 @@ class Player(@BeanProperty var age: Int,
 	         @BeanProperty var height: Double, 
 	         @BeanProperty var weight: Double) extends java.io.Serializable 
 {
-	def this(other: Player) = {
+	/* WARNING: MUST MUST create a no-param default constructor */
+	def this() = {
 		this(0, 0.0, 0.0)
+	}
+	def this(other: Player) = {
+		this()
 		this.age = other.age
 		this.height = other.height
 		this.weight = other.weight
@@ -119,15 +123,17 @@ object TestMDD {
 	    val mdd1 = new UserMDD[Player]
 	    mdd1.copyIn(rdd)
 
-	    for (i <- 0 until 7) {
+	    for (i <- 0 until 5) {
 		    mdd1.inPlace{ elem => 
 	    		elem.setInt(0, elem.getInt(0) + 1)
 	    		elem
 		    }
 	    }
 
-	    val taken = mdd1.rDD.take(10)
-	    taken.map(elem => println(elem.getInt(0)))
+	    val outRDD = mdd1.copyOut()
+
+	    val taken = outRDD.take(10)
+	    taken.map(elem => println(elem.getAge))
 
 		println("End of mock")
 	}

@@ -5,6 +5,7 @@ import org.apache.spark.rdd.RDD
 import research.UnsafeGenericHandle
 
 import com.google.common.reflect.TypeToken
+
 import java.beans._
 
 import scala.reflect.ClassTag
@@ -98,6 +99,7 @@ object MDD {
   */
 abstract class MDD[T : ClassTag] extends java.io.Serializable {
   var rDD : RDD[UnsafeGenericHandle] = null
+  val className = implicitly[ClassTag[T]].runtimeClass.getName
 
   
   protected def toHandle(src: Iterator[T], className: String): Iterator[UnsafeGenericHandle]
@@ -106,10 +108,21 @@ abstract class MDD[T : ClassTag] extends java.io.Serializable {
     if (rDD != null) {
       throw new RuntimeException("MDD already occupied")
     }
-    //val source: Class[_] = 
-    val className = implicitly[ClassTag[T]].runtimeClass.getName
+
     rDD = input.mapPartitions(iter => {
       toHandle(iter, className)
+    }, true)
+  }
+
+
+  protected def toValue(src: Iterator[UnsafeGenericHandle], className: String): Iterator[T]
+
+  def copyOut(): RDD[T] = {
+    if (rDD == null) {
+      throw new RuntimeException("MDD not occupied")
+    }
+    rDD.mapPartitions(iter => {
+      toValue(iter, className)
     }, true)
   }
 
