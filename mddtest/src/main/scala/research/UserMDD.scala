@@ -20,22 +20,19 @@ class UserMDD[T](implicit tag: ClassTag[T]) extends MDD[T] {
                       .getOrElse(getClass.getClassLoader))      
     //val target: Class[_] = classOf[Player]
     val typetoken = TypeToken.of(target)
-    val beanInfo = Introspector.getBeanInfo(typetoken.getRawType())
+    val beanInfo = Introspector.getBeanInfo(typetoken.getRawType)
     val properties = beanInfo.getPropertyDescriptors.filterNot(_.getName == "class")
-    val conversions = (0 until properties.length).zip(properties)
+    val conversions = properties.indices.zip(properties)
     src.map{elem =>
       //println("Inside partition conversion")
       val unsafe = new UnsafeGenericHandle(properties.length)
-      conversions.map{ case (index, p) => initHandle(unsafe, index, 
-                                                     typetoken.method(p.getReadMethod).getReturnType,
-                                                     p.getReadMethod.invoke(elem).asInstanceOf[Any]) }
+      conversions.foreach{ case (index, p) => initHandle(unsafe, index,
+                                                         typetoken.method(p.getReadMethod).getReturnType,
+                                                         p.getReadMethod.invoke(elem).asInstanceOf[Any]) }
       unsafe
     }
   }
 
-/*  def toValue(handle: UnsafeGenericHandle): T = {
-
-  }*/
 
   def toValue(src: Iterator[UnsafeGenericHandle], className: String): Iterator[T] = {
     /* the classloading info needs to be discovered in each partition */
@@ -167,4 +164,6 @@ class UserMDD[T](implicit tag: ClassTag[T]) extends MDD[T] {
       iter.map(toValue)
     }, true)
   }*/
+
+
 }

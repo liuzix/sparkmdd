@@ -1,16 +1,9 @@
 package research
 
-
-import research.MDD._
 import research.UserMDD
-
-
 import scala.beans.BeanProperty
-
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
-//import org.apache.spark.rdd
-
 
 
 // this is a scala bean object. Getter and Setter automatically generated for all cons fields
