@@ -237,8 +237,8 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
     UnsafeGenericHandle copy = new UnsafeGenericHandle(numFields);
     final byte[] dataCopy = new byte[sizeInBytes];
     UnsafeWrapper.copyMemory(baseObject, baseOffset,
-                        dataCopy, UnsafeWrapper.BYTE_ARRAY_OFFSET,
-                        sizeInBytes);
+                             dataCopy, UnsafeWrapper.BYTE_ARRAY_OFFSET,
+                             sizeInBytes);
     copy.pointTo(dataCopy, UnsafeWrapper.BYTE_ARRAY_OFFSET, sizeInBytes);
     return copy;
   }

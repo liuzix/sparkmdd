@@ -100,7 +100,83 @@ object MDDTestSuite {
 	    /* start timer */
 	    num = mdd.rDD.count()
 	    /* end timer */
+	    
 	    println("~~~~~~~~~~~~~~~~~ TEST FINISHED")
+	    sc.stop()
+	}
+
+
+	/* test 2: time vs numFields, Loops Constant */
+	/* How to vary the numFields? We have not implemented array method yet */
+	def test2() = {
+		/* note too many loops could cause stackOverflow */
+		val conf = new SparkConf().setAppName("MDD Test 1")
+		var sc = new SparkContext(conf)
+		println("~~~~~~~~~~~~~~~~~ Entering TESTING ROUTINE")
+		
+	    println("~~~~~~~~~~~~~~~~~ TEST FINISHED")
+	    sc.stop()
+	}
+
+	/* For MDD: Time taken to update 1 field vs numFields
+	 * Expected outcome: should be roughly constant since we are in-place
+	 */
+	def test3() = {
+		val conf = new SparkConf().setAppName("MDD Test 1")
+		var sc = new SparkContext(conf)
+		println("~~~~~~~~~~~~~~~~~ Entering TESTING ROUTINE")
+	    println("~~~~~~~~~~~~~~~~~ TEST FINISHED")
+	    sc.stop()
+	}
+
+
+	/* MDD only, operating under In-place mode vs Safe Mode */
+	/* Compare Time vs NumLoops, numFields constant. numFields must be large to see difference */
+	def test4(dataSize : Int = 1000, numLoops : Int = 200) = {
+		/* note too many loops could cause stackOverflow */
+		val conf = new SparkConf().setAppName("MDD Test 1")
+		var sc = new SparkContext(conf)
+		println("~~~~~~~~~~~~~~~~~ Entering TESTING ROUTINE")
+
+		var rdd = sc.parallelize((0 until dataSize).map{index => 
+			new Player(index, index * 1.0, index * 7.0)
+		})
+
+		/* first operate under in-place mode */
+		val mdd1 = new UserMDD[Player]
+		mdd1.copyIn(rdd)
+	    for (i <- 0 until numLoops) {
+		    mdd1.inPlace{ elem => 
+	    		elem.setInt(0, elem.getInt(0) + 1)
+	    		elem
+		    }
+	    }
+
+	    /* start timer */
+	    var num = mdd1.rDD.count()
+	    /* end timer */
+
+	    sc.stop()
+	    sc = new SparkContext(conf)
+		rdd = sc.parallelize((0 until dataSize).map{index => 
+			new Player(index, index * 1.0, index * 7.0)
+		})
+
+		/* then operate under safe mode */
+		val mdd2 = new UserMDD[Player]
+		mdd2.copyIn(rdd)
+	    for (i <- 0 until numLoops) {
+		    mdd2.inPlace{ elem => 
+		    	val dup = elem.duplicate()
+	    		dup.setInt(0, dup.getInt(0) + 1)
+	    		dup
+		    }
+	    }
+	    /* start timer */
+	    num = mdd2.rDD.count()
+	    /* end timer */
+	    println("~~~~~~~~~~~~~~~~~ TEST FINISHED")
+	    sc.stop()
 	}
 }
 
@@ -108,6 +184,7 @@ object MDDTestSuite {
 object TestMDD {
 	def main(args: Array[String]): Unit = {
 		MDDTestSuite.test1()
+		MDDTestSuite.test4()
 	}
 }
 

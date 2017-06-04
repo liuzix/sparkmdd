@@ -121,9 +121,11 @@ abstract class MDD[T : ClassTag] extends java.io.Serializable {
     if (rDD == null) {
       throw new RuntimeException("MDD not occupied")
     }
-    rDD.mapPartitions(iter => {
+    val outRDD = rDD.mapPartitions(iter => {
       toValue(iter, className)
     }, true)
+    rDD = null
+    outRDD
   }
 
 /*  protected def toValue (handle : UnsafeGenericHandle) : T
@@ -139,6 +141,9 @@ abstract class MDD[T : ClassTag] extends java.io.Serializable {
 
 
   def inPlace (f : UnsafeGenericHandle => UnsafeGenericHandle) : Unit = {
+    if (rDD == null) {
+      throw new RuntimeException("MDD not occupied")
+    }
     rDD = rDD.map(elem => f(elem))
   }
 

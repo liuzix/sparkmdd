@@ -168,24 +168,3 @@ class UserMDD[T](implicit tag: ClassTag[T]) extends MDD[T] {
     }, true)
   }*/
 }
-
-
-/*class UserMDD[T](implicit tag: ClassTag[T]) extends MDD[T] {
-
-  def toHandle(v: T): UnsafeGenericHandle = {
-    val unsafe = new UnsafeGenericHandle(properties.length)
-    conversions.foreach { case (index, p) => initHandle(unsafe, index,
-      typetoken.method(p.getReadMethod).getReturnType,
-      p.getReadMethod.invoke(v).asInstanceOf[Any])
-    }
-    unsafe
-  }
-
-
-
-
-
-
-
-}
-*/
