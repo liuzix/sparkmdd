@@ -80,7 +80,7 @@ object MDDTestSuite {
 	    }
 	    /* force execution */
 	    /* start timer */
-	    val num = rdd.count()
+	    var num = rdd.count()
 	    /* end timer */
 
 	    sc.stop()
@@ -89,53 +89,25 @@ object MDDTestSuite {
 			new Player(index, index * 1.0, index * 7.0)
 		})
 
-	    val source: Class[_] = classOf[Player]
-	    val className = source.getName
-	    val mutableUnsafeRDD = rdd.mapPartitions { iter =>
-	    	MDD.toMDD(iter, className)
+		val mdd = new UserMDD[Player]
+		mdd.copyIn(rdd)
+	    for (i <- 0 until numLoops) {
+		    mdd.inPlace{ elem => 
+	    		elem.setInt(0, elem.getInt(0) + 1)
+	    		elem
+		    }
 	    }
+	    /* start timer */
+	    num = mdd.rDD.count()
+	    /* end timer */
+	    println("~~~~~~~~~~~~~~~~~ TEST FINISHED")
 	}
 }
 
 
 object TestMDD {
-
-
 	def main(args: Array[String]): Unit = {
-/*		val p1 = new Player(5, 1.0, 2.0)
-		val p2 = new Player(p1)
-		p2.setAge(-100)
-		println("p1 age is %d, while p2 age is %d".format(p1.getAge, p2.getAge))*/
-
-
-		val conf = new SparkConf().setAppName("MDD Testing")
-		val sc = new SparkContext(conf)
-	    
-	    println("^^^^^^^^^^^^^^^^^^^^^ Entering TESTING ROUTINE")
-	    val players = (0 until 1000).map(index => new Player(index, index * 1.0, index * 7.0))
-
-	    var rdd = sc.parallelize(players)
-	    val source: Class[_] = classOf[Player]
-	    val className = source.getName
-
-	    /* note we map by partition to avoid repeated lookup of class meta info */
-
-	    val mdd1 = new UserMDD[Player]
-	    mdd1.copyIn(rdd)
-
-	    for (i <- 0 until 5) {
-		    mdd1.inPlace{ elem => 
-	    		elem.setInt(0, elem.getInt(0) + 1)
-	    		elem
-		    }
-	    }
-
-	    val outRDD = mdd1.copyOut()
-
-	    val taken = outRDD.take(10)
-	    taken.map(elem => println(elem.getAge))
-
-		println("End of mock")
+		MDDTestSuite.test1()
 	}
 }
 
