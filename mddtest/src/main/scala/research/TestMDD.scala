@@ -24,8 +24,12 @@ class Player(@BeanProperty var age: Int,
 	         @BeanProperty var height: Double, 
 	         @BeanProperty var weight: Double) extends java.io.Serializable 
 {
-	def this(other: Player) = {
+	/* WARNING: MUST MUST create a no-param default constructor */
+	def this() = {
 		this(0, 0.0, 0.0)
+	}
+	def this(other: Player) = {
+		this()
 		this.age = other.age
 		this.height = other.height
 		this.weight = other.weight
@@ -76,7 +80,7 @@ object MDDTestSuite {
 	    }
 	    /* force execution */
 	    /* start timer */
-	    val num = rdd.count()
+	    var num = rdd.count()
 	    /* end timer */
 
 	    sc.stop()
@@ -85,51 +89,25 @@ object MDDTestSuite {
 			new Player(index, index * 1.0, index * 7.0)
 		})
 
-	    val source: Class[_] = classOf[Player]
-	    val className = source.getName
-	    val mutableUnsafeRDD = rdd.mapPartitions { iter =>
-	    	MDD.toMDD(iter, className)
+		val mdd = new UserMDD[Player]
+		mdd.copyIn(rdd)
+	    for (i <- 0 until numLoops) {
+		    mdd.inPlace{ elem => 
+	    		elem.setInt(0, elem.getInt(0) + 1)
+	    		elem
+		    }
 	    }
+	    /* start timer */
+	    num = mdd.rDD.count()
+	    /* end timer */
+	    println("~~~~~~~~~~~~~~~~~ TEST FINISHED")
 	}
 }
 
 
 object TestMDD {
-
-
 	def main(args: Array[String]): Unit = {
-/*		val p1 = new Player(5, 1.0, 2.0)
-		val p2 = new Player(p1)
-		p2.setAge(-100)
-		println("p1 age is %d, while p2 age is %d".format(p1.getAge, p2.getAge))*/
-
-
-		val conf = new SparkConf().setAppName("MDD Testing")
-		val sc = new SparkContext(conf)
-	    
-	    println("^^^^^^^^^^^^^^^^^^^^^ Entering TESTING ROUTINE")
-	    val players = (0 until 1000).map(index => new Player(index, index * 1.0, index * 7.0))
-
-	    var rdd = sc.parallelize(players)
-	    val source: Class[_] = classOf[Player]
-	    val className = source.getName
-
-	    /* note we map by partition to avoid repeated lookup of class meta info */
-
-	    val mdd1 = new UserMDD[Player]
-	    mdd1.copyIn(rdd)
-
-	    for (i <- 0 until 7) {
-		    mdd1.inPlace{ elem => 
-	    		elem.setInt(0, elem.getInt(0) + 1)
-	    		elem
-		    }
-	    }
-
-	    val taken = mdd1.rDD.take(10)
-	    taken.map(elem => println(elem.getInt(0)))
-
-		println("End of mock")
+		MDDTestSuite.test1()
 	}
 }
 
