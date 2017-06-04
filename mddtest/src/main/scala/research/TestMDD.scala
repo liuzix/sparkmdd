@@ -1,205 +1,185 @@
 package research
 
-import research.UnsafeGenericHandle
-import com.google.common.reflect.TypeToken
-import java.beans._
-import scala.beans.BeanProperty
 
+import research.MDD._
+
+
+import scala.beans.BeanProperty
 
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
+//import org.apache.spark.rdd
+
 
 
 // this is a scala bean object. Getter and Setter automatically generated for all cons fields
-class User(@BeanProperty var firstName: String,
-           @BeanProperty var lastName: String,
-           @BeanProperty var age: Int) {
+class User(@BeanProperty var firstName: String, 
+		   @BeanProperty var lastName: String, 
+		   @BeanProperty var age: Int) {
   override def toString: String = return "%s %s, age %d".format(firstName, lastName, age)
 }
 
-class Player(@BeanProperty var age: Int,
-             @BeanProperty var height: Double,
-             @BeanProperty var weight: Double) extends java.io.Serializable {
-  override def toString: String = return "Play %d %f %f".format(age, height, weight)
+class Player(@BeanProperty var age: Int, 
+	         @BeanProperty var height: Double, 
+	         @BeanProperty var weight: Double) extends java.io.Serializable 
+{
+	def this(other: Player) = {
+		this(0, 0.0, 0.0)
+		this.age = other.age
+		this.height = other.height
+		this.weight = other.weight
+		println("Copy cons")
+	}
+
+	override def toString: String = return "Play %d %f %f".format(age, height, weight)
+}
+
+
+
+
+
+
+object MDDTestSuite {
+
+	/* we have 3 varibles: 
+	 * numFields: number of fields in the target data structure.
+	              This determines how costly it is to re-allocate the data across map
+	 * numLoops: number of loops to iterate over. The longer the costlier?
+	 * time: time taken to complete the job, disregarding starup
+	 */
+
+
+	/* test 1: time vs numLoops. numFields constant */
+	def test1(dataSize : Int = 1000, numLoops : Int = 200) = {
+		/* note too many loops could cause stackOverflow */
+		val conf = new SparkConf().setAppName("MDD Test 1")
+		var sc = new SparkContext(conf)
+		println("~~~~~~~~~~~~~~~~~ Entering TESTING ROUTINE")
+
+		/*val players = (0 until dataSize).map{index => 
+			new Player(index, index * 1.0, index * 7.0)
+		}
+		var rdd = sc.parallelize(players)
+		*/
+
+		var rdd = sc.parallelize((0 until dataSize).map{index => 
+			new Player(index, index * 1.0, index * 7.0)
+		})
+
+	    for (i <- 0 until numLoops) {
+	    	rdd = rdd.map{ elem =>
+	    		val newElem = new Player(elem)
+	    		newElem.setAge(newElem.getAge() + 1)
+	    		newElem
+	    	}
+	    }
+	    /* force execution */
+	    /* start timer */
+	    val num = rdd.count()
+	    /* end timer */
+
+	    sc.stop()
+	    sc = new SparkContext(conf)
+		rdd = sc.parallelize((0 until dataSize).map{index => 
+			new Player(index, index * 1.0, index * 7.0)
+		})
+
+	    val source: Class[_] = classOf[Player]
+	    val className = source.getName
+	    val mutableUnsafeRDD = rdd.mapPartitions { iter =>
+	    	MDD.toMDD(iter, className)
+	    }
+	}
 }
 
 
 object TestMDD {
-  def main(args: Array[String]): Unit = {
-    val conf = new SparkConf().setAppName("MDD Testing")
-    val sc = new SparkContext(conf)
-    println("^^^^^^^^^^^^^^^^^^^^^ Entering TESTING ROUTINE")
-    val players = (0 until 100).map(index => new Player(index, index * 1.0, index * 7.0))
-    val rdd = sc.parallelize(players)
 
 
-    val source: Class[_] = classOf[Player]
-    val className = source.getName
-
-    val mutableUnsafeRDD = rdd.mapPartitions { iter =>
-      /*			val target = Class.forName(className, true, Option(Thread.currentThread().getContextClassLoader)
-                                  .getOrElse(getClass.getClassLoader))
-            val target: Class[_] = classOf[Player]*/
-      val target: Class[_] = classOf[Player]
-      val typetoken = TypeToken.of(target)
-      val beanInfo = Introspector.getBeanInfo(typetoken.getRawType())
-      val properties = beanInfo.getPropertyDescriptors.filterNot(_.getName == "class")
-      val conversions = (0 until properties.length).zip(properties)
-
-      println("before partition conversion")
-
-      iter.map { elem =>
-        println("Inside partition conversion")
-        val unsafe = new UnsafeGenericHandle(properties.length)
-        conversions.map { case (index, p) => initHandle(unsafe, index,
-          typetoken.method(p.getReadMethod).getReturnType,
-          p.getReadMethod.invoke(elem).asInstanceOf[Any])
-        }
-        println("Age is %d".format(unsafe.getInt(0)))
-        println("Height is %f".format(unsafe.getDouble(1)))
-        println("Weight is %f".format(unsafe.getDouble(2)))
-        unsafe
-      }
-    }
-
-    val num = mutableUnsafeRDD.count()
-    println("there are %d".format(num))
-
-    // use only unsafeRDD to verify
-
-    val intermediary = mutableUnsafeRDD.mapPartitions { iter =>
-      iter.map { elem =>
-        elem.setInt(0, 1000)
-        elem
-      }
-    }
-
-    val normalRDD = intermediary.mapPartitions { iter =>
-      iter.map { elem =>
-        val first: Int = elem.getInt(0)
-        first
-      }
-    }
-
-    val taken = normalRDD.take(10)
-    taken.map(elem => println("expect 1000: %d".format(elem)))
+	def main(args: Array[String]): Unit = {
+/*		val p1 = new Player(5, 1.0, 2.0)
+		val p2 = new Player(p1)
+		p2.setAge(-100)
+		println("p1 age is %d, while p2 age is %d".format(p1.getAge, p2.getAge))*/
 
 
-    /*		val target = Class.forName(className, true, Option(Thread.currentThread().getContextClassLoader)
-                              .getOrElse(getClass.getClassLoader))
-        val wang = new Player(5, 2.0, 3.0)
-        // all should happen locally within the convert
-        val typetoken = TypeToken.of(target)
-        val beanInfo = Introspector.getBeanInfo(typetoken.getRawType())
-        val properties = beanInfo.getPropertyDescriptors.filterNot(_.getName == "class")
+		val conf = new SparkConf().setAppName("MDD Testing")
+		val sc = new SparkContext(conf)
+	    
+	    println("^^^^^^^^^^^^^^^^^^^^^ Entering TESTING ROUTINE")
+	    val players = (0 until 1000).map(index => new Player(index, index * 1.0, index * 7.0))
+	    
 
-        val unsafe = new UnsafeGenericHandle(properties.length)
+	    var rdd = sc.parallelize(players)
 
-        val conversions = (0 until properties.length).zip(properties)
+/*	    for (i <- 0 until 200) {
+	    	rdd = rdd.map{ elem =>
+	    		val newElem = new Player(elem)
+	    		newElem.setAge(newElem.getAge() + 1)
+	    		newElem
+	    	}
+	    }
+		val taken = rdd.take(1000)
+		taken.map(elem => println("Age is %d".format(elem.getAge)))*/
 
-        //conversions.map{case (index, p) => p.getReadMethod.invoke()}
+/*	    val rdd2 = rdd.map{elem => 
+	    	val newElem = new Player(elem)
+	    	newElem.setAge(-100)
+	    	newElem
+	    }
 
-        conversions.map{case (index, p) => initHandle(unsafe,
-                                                    index,
-                                                    typetoken.method(p.getReadMethod).getReturnType,
-                                                    p.getReadMethod.invoke(wang).asInstanceOf[Any]) }
+		val taken = rdd.take(10)
+		taken.map(elem => println("Age is %d".format(elem.getAge)))
 
-        println("Age is %d".format(unsafe.getInt(0)))
-        println("Height is %f".format(unsafe.getDouble(1)))
-        println("Weight is %f".format(unsafe.getDouble(2)))*/
+		val taken2 = rdd2.take(10)
+		taken2.map(elem => println("Age is %d".format(elem.getAge)))*/
 
-    println("End of mock")
-  }
+		/* result both print -10 */
+		/* This is a dangerous discovery. References are carried forward without re-allocation. 
+		 * Thus, if I modify a downstream rdd, an upstream cached RDD will be affected
+		 */
 
 
-  def initHandle(handle: UnsafeGenericHandle, index: Int,
-                 fieldType: TypeToken[_], target: Any): Unit = {
-    fieldType.getRawType match {
-      case c: Class[_] if c == java.lang.Double.TYPE => {
-        handle.setDouble(index, target.asInstanceOf[Double])
-      }
-      case c: Class[_] if c == java.lang.Integer.TYPE => {
-        handle.setInt(index, target.asInstanceOf[Int])
-      }
-      case c: Class[_] if c == java.lang.Short.TYPE => {
-        handle.setShort(index, target.asInstanceOf[Short])
-      }
-      case c: Class[_] if c == java.lang.Long.TYPE => {
-        handle.setLong(index, target.asInstanceOf[Long])
-      }
-      case c: Class[_] if c == java.lang.Byte.TYPE => {
-        handle.setByte(index, target.asInstanceOf[Byte])
-      }
-      case c: Class[_] if c == java.lang.Float.TYPE => {
-        handle.setFloat(index, target.asInstanceOf[Float])
-      }
-      case c: Class[_] if c == java.lang.Boolean.TYPE => {
-        handle.setBoolean(index, target.asInstanceOf[Boolean])
-      }
+	    val source: Class[_] = classOf[Player]
+	    val className = source.getName
 
-      // let us separate the primitives from Boxed objects
+	    /* note we map by partition to avoid repeated lookup of class meta info */
 
-      case c: Class[_] if c == classOf[java.lang.Short] => {
-        handle.setShort(index, target.asInstanceOf[Short])
-      }
-      case c: Class[_] if c == classOf[java.lang.Integer] => {
-        handle.setInt(index, target.asInstanceOf[Int])
-      }
-      case c: Class[_] if c == classOf[java.lang.Long] => {
-        handle.setLong(index, target.asInstanceOf[Long])
-      }
-      case c: Class[_] if c == classOf[java.lang.Double] => {
-        handle.setDouble(index, target.asInstanceOf[Double])
-      }
-      case c: Class[_] if c == classOf[java.lang.Byte] => {
-        handle.setByte(index, target.asInstanceOf[Byte])
-      }
-      case c: Class[_] if c == classOf[java.lang.Float] => {
-        handle.setFloat(index, target.asInstanceOf[Float])
-      }
-      case c: Class[_] if c == classOf[java.lang.Boolean] => {
-        handle.setBoolean(index, target.asInstanceOf[Boolean])
-      }
+	    val mutableUnsafeRDD = rdd.mapPartitions { iter =>
+	    	MDD.toMDD(iter, className)
+	    }
 
-      case c: Class[_] if c == classOf[java.lang.String] => {
-        println("Support String later")
-      }
-      case _ if fieldType.isArray => {
-        println("Support array later")
-      }
-      case _ => println("Match missed")
-    }
-  }
+	    var num = mutableUnsafeRDD.count()
+	    println("there are %d".format(num))
 
+
+	    val intermediary = mutableUnsafeRDD.map{elem => 
+    		elem.setInt(0, 1000)
+    		elem
+	    }
+	    val normalRDD = intermediary.map{elem => 
+    		val first: Int = elem.getInt(0)
+    		first
+	    }
+
+	    val taken2 = mutableUnsafeRDD.take(10)
+	    println("~~~~~~~~~~~~~~~~~~~~~~~~~~  try to take")
+	    val taken = normalRDD.take(10)
+	    println("normal one")
+
+
+	    taken.map(elem => println("expect 1000: %d".format(elem)))
+	    println("special one")
+	    println("length is %d".format(taken2.length))
+	    for (i <- taken2) {
+	    	println("what is this %d", i.getInt(0))
+	    }
+
+		println("End of mock")
+	}
 }
 
 
-/*object Utility  {
-	match 
-}*/
 
 
-/*def initHandle(handle: UnsafeGenericHandle, index: Int, 
-	           fieldType: TypeToken[_], target: Any): Unit = {
-	fieldType.getRawType match
-	{
-      case c: Class[_] if c == java.lang.Short.TYPE => println("Match type: short type")
-      case c: Class[_] if c == java.lang.Integer.TYPE => println("Match type: int type")
-      case c: Class[_] if c == java.lang.Long.TYPE => println("Match type: long type")
-      case c: Class[_] if c == java.lang.Double.TYPE => println("Match type: double type")
-      case c: Class[_] if c == java.lang.Byte.TYPE => println("Match type: byte type")
-      case c: Class[_] if c == java.lang.Float.TYPE => println("Match type: float type")
-      case c: Class[_] if c == java.lang.Boolean.TYPE => println("Match type: bool type")
 
-      case c: Class[_] if c == classOf[java.lang.String] => println("Match type: string")
-      case c: Class[_] if c == classOf[java.lang.Short] => println("Match type: short")
-      case c: Class[_] if c == classOf[java.lang.Integer] => println("Match type: int ")
-      case c: Class[_] if c == classOf[java.lang.Long] => println("Match type: long")
-      case c: Class[_] if c == classOf[java.lang.Double] => println("Match type: double")
-      case c: Class[_] if c == classOf[java.lang.Byte] => println("Match type: byte ")
-      case c: Class[_] if c == classOf[java.lang.Float] => println("Match type: float")
-      case c: Class[_] if c == classOf[java.lang.Boolean] => println("Match type: bool ")
-      case _ => println("Match missed")
-	}
-	println("Exit init")
-}*/
