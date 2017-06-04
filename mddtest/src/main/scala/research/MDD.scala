@@ -2,11 +2,13 @@ package research
 
 import org.apache.spark.rdd.RDD
 
+import scala.reflect.ClassTag
+
 
 /**
   * Created by zixiong on 6/4/17.
   */
-abstract class MDD[T] {
+abstract class MDD[T : ClassTag] {
   var rDD : RDD[UnsafeGenericHandle] = null
   protected def toHandle (v : T) : UnsafeGenericHandle
   protected def toValue (handle : UnsafeGenericHandle) : T
@@ -18,6 +20,10 @@ abstract class MDD[T] {
     rDD = input.mapPartitions(iter => {
       iter.map(toHandle)
     }, true)
+  }
+
+  def inPlace (f : UnsafeGenericHandle => Unit) : Unit = {
+    rDD.foreachPartition(_.map(f))
   }
 
   def copyOut () : RDD[T] = {
