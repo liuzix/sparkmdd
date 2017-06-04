@@ -67,14 +67,14 @@ object TestMDD {
 
 	    // use only unsafeRDD to verify 
 
-/*	    mutableUnsafeRDD.mapPartitions{iter => 
+	    val intermediary = mutableUnsafeRDD.mapPartitions{iter => 
 	    	iter.map{elem =>
 	    		elem.setInt(0, 1000)
 	    		elem
 	    	}
 	    }
 
-	    val normalRDD = mutableUnsafeRDD.mapPartitions{iter => 
+	    val normalRDD = intermediary.mapPartitions{iter => 
 	    	iter.map{elem =>
 	    		val first: Int = elem.getInt(0)
 	    		first
@@ -82,7 +82,7 @@ object TestMDD {
 	    }
 
 	    val taken = normalRDD.take(10)
-	    taken.map(elem => println("expect 1000: %d".format(elem)))*/
+	    taken.map(elem => println("expect 1000: %d".format(elem)))
 		
 		
 		
