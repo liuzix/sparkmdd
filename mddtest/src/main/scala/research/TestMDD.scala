@@ -38,25 +38,32 @@ object TestMDD {
 	    val className = source.getName
 
 	    val mutableUnsafeRDD = rdd.mapPartitions { iter =>
-	    	//val localBeanInfo = Introspector.getBeanInfo(Utils.classForName(className))
-			val target = Class.forName(className, true, Option(Thread.currentThread().getContextClassLoader)
+/*			val target = Class.forName(className, true, Option(Thread.currentThread().getContextClassLoader)
 														.getOrElse(getClass.getClassLoader))			
-			//val target: Class[_] = classOf[Player]
+			val target: Class[_] = classOf[Player]*/
+			val target: Class[_] = classOf[Player]
 			val typetoken = TypeToken.of(target)
 			val beanInfo = Introspector.getBeanInfo(typetoken.getRawType())
 			val properties = beanInfo.getPropertyDescriptors.filterNot(_.getName == "class")
 			val conversions = (0 until properties.length).zip(properties)
 
+			println("before partition conversion")
+
 			iter.map{elem =>
+				println("Inside partition conversion")
 				val unsafe = new UnsafeGenericHandle(properties.length)
 				conversions.map{ case (index, p) => initHandle(unsafe, index, 
 					                                           typetoken.method(p.getReadMethod).getReturnType,
 					                                           p.getReadMethod.invoke(elem).asInstanceOf[Any]) }
+				println("Age is %d".format(unsafe.getInt(0)))
+				println("Height is %f".format(unsafe.getDouble(1)))
+				println("Weight is %f".format(unsafe.getDouble(2)))
 				unsafe
 			}
 	    }
 
 	    val num = mutableUnsafeRDD.count()
+	    println("there are %d".format(num))
 
 	    // use only unsafeRDD to verify 
 

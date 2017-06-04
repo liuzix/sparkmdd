@@ -45,9 +45,9 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
     return ((numFields + 63)/ 64) * 8;
   }
 
-  public static int calculateFixedPortionByteSize(int numFields) {
-    return 8 * numFields + calculateBitSetWidthInBytes(numFields);
-  }
+/*  public static int calculateFixedPortionByteSize(int index) {
+    return 8 * index + calculateBitSetWidthInBytes(numFields);
+  }*/
 
   private Object baseObject;
   public Object getBaseObject() { return baseObject; }
@@ -88,7 +88,11 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
   public UnsafeGenericHandle(int numFields) {
     this.numFields = numFields;
     this.bitSetWidthInBytes = calculateBitSetWidthInBytes(numFields);
+    this.sizeInBytes = (int)((numFields * 8L) + this.bitSetWidthInBytes);
+    
     this.pointTo(new byte[sizeInBytes], sizeInBytes);
+    System.out.format("The required size is %d\n", sizeInBytes);
+    //UnsafeWrapper.setMemory(object, UnsafeWrapper.BYTE_ARRAY_OFFSET, sizeInBytes, )
   }
 
   // for serializer
