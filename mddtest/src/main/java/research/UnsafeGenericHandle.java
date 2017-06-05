@@ -91,7 +91,7 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
     this.sizeInBytes = (int)((numFields * 8L) + this.bitSetWidthInBytes);
     
     this.pointTo(new byte[sizeInBytes], sizeInBytes);
-    System.out.format("The required size is %d\n", sizeInBytes);
+    //System.out.format("The required size is %d\n", sizeInBytes);
     //UnsafeWrapper.setMemory(object, UnsafeWrapper.BYTE_ARRAY_OFFSET, sizeInBytes, )
   }
 
