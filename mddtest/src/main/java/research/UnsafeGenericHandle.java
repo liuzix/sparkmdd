@@ -82,19 +82,6 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
     this.bitSetWidthInBytes = calculateBitSetWidthInBytes(numFields);
   }*/
 
-  /**
-   * Creates an empty UnsafeGenericHandle from a byte array with specified numFields.
-   */
-  public UnsafeGenericHandle(int numFields) {
-    this.numFields = numFields;
-    this.bitSetWidthInBytes = calculateBitSetWidthInBytes(numFields);
-    this.sizeInBytes = (int)((numFields * 8L) + this.bitSetWidthInBytes);
-    
-    this.pointTo(new byte[sizeInBytes], sizeInBytes);
-    //System.out.format("The required size is %d\n", sizeInBytes);
-    //UnsafeWrapper.setMemory(object, UnsafeWrapper.BYTE_ARRAY_OFFSET, sizeInBytes, )
-  }
-
   // for serializer
   public UnsafeGenericHandle() {
     this.numFields = 0;
@@ -102,7 +89,23 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
     this.baseObject = null;
     this.baseOffset = 0;
   }
-  
+
+  /**
+   * Creates an empty UnsafeGenericHandle from a byte array with specified numFields.
+   */
+  public UnsafeGenericHandle(int numFields) {
+    this.numFields = numFields;
+    this.bitSetWidthInBytes = calculateBitSetWidthInBytes(numFields);
+    this.sizeInBytes = (int)((numFields * 8L) + this.bitSetWidthInBytes);
+
+    long memAddr = UnsafeWrapper.allocateMemory(sizeInBytes);
+    this.pointTo(null, memAddr, sizeInBytes);
+    
+    //this.pointTo(new byte[sizeInBytes], sizeInBytes);
+    System.out.format("The required size is %d\n", sizeInBytes);
+    //UnsafeWrapper.setMemory(object, UnsafeWrapper.BYTE_ARRAY_OFFSET, sizeInBytes, )
+  }
+
   /**
    * Update this UnsafeGenericHandle to point to different backing data.
    */
@@ -118,6 +121,14 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
    */
   public void pointTo(byte[] buf, int sizeInBytes) {
     pointTo(buf, UnsafeWrapper.BYTE_ARRAY_OFFSET, sizeInBytes);
+  }
+
+  public void free() {
+    if (baseObject == null) {
+      UnsafeWrapper.freeMemory(baseOffset);
+    } else {
+      System.out.println("impossible object is not null");
+    }
   }
 
   public void setTotalSize(int sizeInBytes) {
@@ -142,50 +153,50 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
   }*/
 
   public void setInt(int ordinal, int value) {
-    assertIndexIsValid(ordinal);
-    BitSet.unset(baseObject, baseOffset, ordinal);
+    //assertIndexIsValid(ordinal);
+    //BitSet.unset(baseObject, baseOffset, ordinal);
     UnsafeWrapper.putInt(baseObject, getFieldOffset(ordinal), value);
   }
 
   public void setLong(int ordinal, long value) {
-    assertIndexIsValid(ordinal);
-    BitSet.unset(baseObject, baseOffset, ordinal);
+    //assertIndexIsValid(ordinal);
+    //BitSet.unset(baseObject, baseOffset, ordinal);
     UnsafeWrapper.putLong(baseObject, getFieldOffset(ordinal), value);
   }
 
   public void setDouble(int ordinal, double value) {
-    assertIndexIsValid(ordinal);
+    /*assertIndexIsValid(ordinal);
     BitSet.unset(baseObject, baseOffset, ordinal);
     if (Double.isNaN(value)) {
       value = Double.NaN;
-    }
+    }*/
     UnsafeWrapper.putDouble(baseObject, getFieldOffset(ordinal), value);
   }
 
   public void setBoolean(int ordinal, boolean value) {
-    assertIndexIsValid(ordinal);
-    BitSet.unset(baseObject, baseOffset, ordinal);
+    //assertIndexIsValid(ordinal);
+    //BitSet.unset(baseObject, baseOffset, ordinal);
     UnsafeWrapper.putBoolean(baseObject, getFieldOffset(ordinal), value);
   }
 
   public void setShort(int ordinal, short value) {
-    assertIndexIsValid(ordinal);
-    BitSet.unset(baseObject, baseOffset, ordinal);
+    //assertIndexIsValid(ordinal);
+    //BitSet.unset(baseObject, baseOffset, ordinal);
     UnsafeWrapper.putShort(baseObject, getFieldOffset(ordinal), value);
   }
 
   public void setByte(int ordinal, byte value) {
-    assertIndexIsValid(ordinal);
-    BitSet.unset(baseObject, baseOffset, ordinal);
+    //assertIndexIsValid(ordinal);
+    //BitSet.unset(baseObject, baseOffset, ordinal);
     UnsafeWrapper.putByte(baseObject, getFieldOffset(ordinal), value);
   }
 
   public void setFloat(int ordinal, float value) {
-    assertIndexIsValid(ordinal);
+    /*assertIndexIsValid(ordinal);
     BitSet.unset(baseObject, baseOffset, ordinal);
     if (Float.isNaN(value)) {
       value = Float.NaN;
-    }
+    }*/
     UnsafeWrapper.putFloat(baseObject, getFieldOffset(ordinal), value);
   }
 
@@ -195,37 +206,37 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
   }
 
   public boolean getBoolean(int ordinal) {
-    assertIndexIsValid(ordinal);
+    //assertIndexIsValid(ordinal);
     return UnsafeWrapper.getBoolean(baseObject, getFieldOffset(ordinal));
   }
 
   public byte getByte(int ordinal) {
-    assertIndexIsValid(ordinal);
+    //assertIndexIsValid(ordinal);
     return UnsafeWrapper.getByte(baseObject, getFieldOffset(ordinal));
   }
 
   public short getShort(int ordinal) {
-    assertIndexIsValid(ordinal);
+    //assertIndexIsValid(ordinal);
     return UnsafeWrapper.getShort(baseObject, getFieldOffset(ordinal));
   }
 
   public int getInt(int ordinal) {
-    assertIndexIsValid(ordinal);
+    //assertIndexIsValid(ordinal);
     return UnsafeWrapper.getInt(baseObject, getFieldOffset(ordinal));
   }
 
   public long getLong(int ordinal) {
-    assertIndexIsValid(ordinal);
+    //assertIndexIsValid(ordinal);
     return UnsafeWrapper.getLong(baseObject, getFieldOffset(ordinal));
   }
 
   public float getFloat(int ordinal) {
-    assertIndexIsValid(ordinal);
+    //assertIndexIsValid(ordinal);
     return UnsafeWrapper.getFloat(baseObject, getFieldOffset(ordinal));
   }
 
   public double getDouble(int ordinal) {
-    assertIndexIsValid(ordinal);
+    //assertIndexIsValid(ordinal);
     return UnsafeWrapper.getDouble(baseObject, getFieldOffset(ordinal));
   }
 
@@ -233,15 +244,25 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
   /**
    * duplicate the data, returns a handle with newly allocated underlying byte array
    */
+
   public UnsafeGenericHandle duplicate() {
+    /* constructor of copy already allocates memory. Just copy */
+    UnsafeGenericHandle copy = new UnsafeGenericHandle(numFields);
+    UnsafeWrapper.copyMemory(baseObject, baseOffset,
+                             copy.baseObject, copy.baseOffset, 
+                             sizeInBytes);
+    return copy;
+  }
+
+  /*public UnsafeGenericHandle duplicate() {
     UnsafeGenericHandle copy = new UnsafeGenericHandle(numFields);
     final byte[] dataCopy = new byte[sizeInBytes];
     UnsafeWrapper.copyMemory(baseObject, baseOffset,
-                             dataCopy, UnsafeWrapper.BYTE_ARRAY_OFFSET,
-                             sizeInBytes);
+                        dataCopy, UnsafeWrapper.BYTE_ARRAY_OFFSET,
+                        sizeInBytes);
     copy.pointTo(dataCopy, UnsafeWrapper.BYTE_ARRAY_OFFSET, sizeInBytes);
     return copy;
-  }
+  }*/
 
 
   /**
