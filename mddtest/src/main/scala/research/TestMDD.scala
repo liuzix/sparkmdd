@@ -89,9 +89,58 @@ class Wide() extends java.io.Serializable {
   var field27: Double = 0
 }
 
+class ArrPlayer() extends java.io.Serializable {
+  @BeanProperty var height: Double = 0.0
+  @BeanProperty var vec: Array[Double] = (0.0 until 1000.0 by 1.0).toArray
+}
+
 
 
 object MDDTestSuite {
+
+  def test0(dataSize: Int = 1000, numLoops: Int = 100) = {
+    val conf = new SparkConf().setAppName("MDD Test 1")
+    var sc = new SparkContext(conf)
+    var rdd = sc.parallelize( List.fill(dataSize)(new ArrPlayer) )
+    /*var rdd = sc.parallelize((0 until 100).map { index =>
+      new ArrPlayer()
+    })*/
+
+    val mdd = new UserMDD[ArrPlayer]
+    mdd.copyIn(rdd)
+    for (i <- 0 until numLoops) {
+      mdd.inPlace { elem =>
+        elem.setDouble(0, elem.getInt(0) + 1)
+        elem
+      }
+    }
+
+    println("MDD:")
+    StopWatch.start()
+    var num = mdd.rDD.count()
+    StopWatch.stop()
+
+    sc.stop()
+    sc = new SparkContext(conf)
+    rdd = sc.parallelize( List.fill(dataSize)(new ArrPlayer) )
+
+    for (i <- 0 until numLoops) {
+      rdd = rdd.map { elem =>
+        val newElem = new ArrPlayer()
+        newElem
+      }
+    }
+
+
+    println("Stock:")
+    StopWatch.start()
+    num = rdd.count()
+    StopWatch.stop()
+
+    
+    sc.stop()
+
+  }
 
   /* we have 3 varibles:
    * numFields: number of fields in the target data structure.
@@ -255,7 +304,7 @@ object MDDTestSuite {
 
 object TestMDD {
   def main(args: Array[String]): Unit = {
-    for (i <- 0 until 7) {
+    /*for (i <- 0 until 7) {
       println("Type: Narrow")
       (0 to 4).foreach {j => MDDTestSuite.test1(TestClass.facN,10000 * pow(2, i).toInt, 50 * j) }
     }
@@ -268,8 +317,10 @@ object TestMDD {
     for (i <- 0 until 7) {
       println("Type: Wide")
       (0 to 4).foreach {j => MDDTestSuite.test1(TestClass.facW,10000 * pow(2, i).toInt, 50 * j) }
-    }
+    }*/
+    MDDTestSuite.test0()
   }
+
 }
 
 object StopWatch {

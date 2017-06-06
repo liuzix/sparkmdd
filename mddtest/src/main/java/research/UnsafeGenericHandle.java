@@ -102,8 +102,66 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
     this.pointTo(null, memAddr, sizeInBytes);
     
     //this.pointTo(new byte[sizeInBytes], sizeInBytes);
-    System.out.format("The required size is %d\n", sizeInBytes);
+    //System.out.format("The required size is %d\n", sizeInBytes);
     //UnsafeWrapper.setMemory(object, UnsafeWrapper.BYTE_ARRAY_OFFSET, sizeInBytes, )
+  }
+
+  public UnsafeGenericHandle(int numFields, int size) {
+    this.numFields = numFields;
+    this.bitSetWidthInBytes = calculateBitSetWidthInBytes(numFields);
+    this.sizeInBytes = (int)((size) + this.bitSetWidthInBytes);
+
+    long memAddr = UnsafeWrapper.allocateMemory(sizeInBytes);
+    this.pointTo(null, memAddr, sizeInBytes);
+    
+    //this.pointTo(new byte[sizeInBytes], sizeInBytes);
+    //System.out.format("The required size is %d\n", sizeInBytes);
+  }
+
+  /**
+   * duplicate the data, returns a handle with newly allocated underlying byte array
+   */
+
+  public UnsafeGenericHandle duplicate() {
+    /* constructor of copy already allocates memory. Just copy */
+    UnsafeGenericHandle copy = new UnsafeGenericHandle(numFields, sizeInBytes);
+    UnsafeWrapper.copyMemory(baseObject, baseOffset,
+                             copy.baseObject, copy.baseOffset, 
+                             sizeInBytes);
+    return copy;
+  }
+
+/*  public ArrayData getArray(int ordinal) {
+    if (isNullAt(ordinal)) {
+      return null;
+    } else {
+      final long offsetAndSize = getLong(ordinal);
+      final int offset = (int) (offsetAndSize >> 32);
+      final int size = (int) (offsetAndSize & ((1L << 32) - 1));
+      return UnsafeReaders.readArray(baseObject, baseOffset + offset, size);
+    }
+  }*/
+
+  public void setDoubleArr(int index, double[] arr) {
+    int arr_offset = sizeInBytes;
+    long arr_size = arr.length * 8L;
+    /* assume arr length will not be larger than 2 ^ 32 - 1 */
+    long encode_offset_and_size = (arr_offset << 32) + arr_size;
+    UnsafeWrapper.putLong(baseObject, getFieldOffset(index), encode_offset_and_size);
+
+    long final_length = sizeInBytes + arr_size;
+
+    long new_mem = UnsafeWrapper.allocateMemory(final_length);
+
+
+    UnsafeWrapper.copyMemory(null, baseOffset, null, new_mem, sizeInBytes);
+    UnsafeWrapper.copyMemory(arr, UnsafeWrapper.DOUBLE_ARRAY_OFFSET, 
+                             null, new_mem + arr_offset,
+                             arr_size);
+
+    UnsafeWrapper.freeMemory(baseOffset);
+    baseOffset = new_mem;
+    sizeInBytes = (int)final_length;
   }
 
   /**
@@ -240,19 +298,6 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
     return UnsafeWrapper.getDouble(baseObject, getFieldOffset(ordinal));
   }
 
-
-  /**
-   * duplicate the data, returns a handle with newly allocated underlying byte array
-   */
-
-  public UnsafeGenericHandle duplicate() {
-    /* constructor of copy already allocates memory. Just copy */
-    UnsafeGenericHandle copy = new UnsafeGenericHandle(numFields);
-    UnsafeWrapper.copyMemory(baseObject, baseOffset,
-                             copy.baseObject, copy.baseOffset, 
-                             sizeInBytes);
-    return copy;
-  }
 
   /*public UnsafeGenericHandle duplicate() {
     UnsafeGenericHandle copy = new UnsafeGenericHandle(numFields);

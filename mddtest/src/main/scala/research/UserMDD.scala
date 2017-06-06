@@ -100,6 +100,11 @@ class UserMDD[T](implicit tag: ClassTag[T]) extends MDD[T] {
       case c: Class[_] if c == classOf[java.lang.Boolean] =>
         method.invoke(value, handle.getBoolean(index).asInstanceOf[AnyRef])
 
+      case _ if fieldType.isArray => {
+        println("conversion back not supported yet")
+      }
+
+
       case _ => println("Match missed")
     }
   }
@@ -151,6 +156,10 @@ class UserMDD[T](implicit tag: ClassTag[T]) extends MDD[T] {
 
       case c: Class[_] if c == classOf[java.lang.Boolean] =>
         handle.setBoolean(index, target.asInstanceOf[Boolean])
+
+      case _ if fieldType.isArray => {
+        handle.setDoubleArr(index, target.asInstanceOf[Array[Double]])
+      }
 
       case _ => println("Match missed")
     }
