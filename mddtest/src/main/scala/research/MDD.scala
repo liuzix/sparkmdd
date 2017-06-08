@@ -1,7 +1,6 @@
 package research
 
 import org.apache.spark.rdd.RDD
-import research.UnsafeGenericHandle
 import com.google.common.reflect.TypeToken
 import java.beans._
 import scala.reflect.ClassTag

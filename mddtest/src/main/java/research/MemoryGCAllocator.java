@@ -1,6 +1,5 @@
 package research;
 
-import research.MemoryAllocator;
 
 public class MemoryGCAllocator implements MemoryAllocator {
     public MemorySegment allocate (long size) {

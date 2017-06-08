@@ -1,7 +1,5 @@
 package research
 
-import research.UserMDD
-
 import scala.beans.BeanProperty
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
@@ -304,7 +302,7 @@ object MDDTestSuite {
 
 object TestMDD {
   def main(args: Array[String]): Unit = {
-    /*for (i <- 0 until 7) {
+    for (i <- 0 until 7) {
       println("Type: Narrow")
       (0 to 4).foreach {j => MDDTestSuite.test1(TestClass.facN,10000 * pow(2, i).toInt, 50 * j) }
     }
@@ -317,8 +315,8 @@ object TestMDD {
     for (i <- 0 until 7) {
       println("Type: Wide")
       (0 to 4).foreach {j => MDDTestSuite.test1(TestClass.facW,10000 * pow(2, i).toInt, 50 * j) }
-    }*/
-    MDDTestSuite.test0()
+    }
+    //MDDTestSuite.test0()
   }
 
 }

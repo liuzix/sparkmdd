@@ -2,9 +2,6 @@ package research;
 
 import java.io.*;
 
-
-import research.BitSet;
-import research.UnsafeWrapper;
 import static research.UnsafeWrapper.BYTE_ARRAY_OFFSET;
 
 
@@ -40,7 +37,7 @@ import java.util.Set;*/
 
 public final class UnsafeGenericHandle implements java.io.Serializable {
 
-  static MemoryAllocator manager = new MemoryUnsafeAllocator();
+  static MemoryAllocator manager = new MemoryPoolAllocator();
 
   /* round up to multiple of 8 bytes */
   public static int calculateBitSetWidthInBytes(int numFields) {
