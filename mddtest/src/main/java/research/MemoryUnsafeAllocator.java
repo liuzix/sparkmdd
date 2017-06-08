@@ -2,11 +2,11 @@ package research;
 
 
 public class MemoryUnsafeAllocator implements MemoryAllocator {
-    public long allocate (long size) {
-        return UnsafeWrapper.allocateMemory(size);
+    public MemorySegment allocate (long size) {
+        return new MemorySegment(null, UnsafeWrapper.allocateMemory(size), size);
     }
 
-    public void free (long ptr) {
-        return UnsafeWrapper.freeMemory(ptr);
+    public void free (MemorySegment ms) {
+        return UnsafeWrapper.freeMemory(ms.offSet);
     }
 }
