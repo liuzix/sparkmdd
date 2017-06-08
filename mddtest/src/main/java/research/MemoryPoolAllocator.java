@@ -33,23 +33,32 @@ public class MemoryPoolAllocator implements MemoryAllocator{
     }
 
     private HashMap<Long, MemoryBucket> buckets = new HashMap<>();
+    private HashMap<Long, MemoryBucket> allocateMap = new HashMap<>();
 
-    public long allocate (long size) {
+    public MemorySegment allocate (long size) {
         for (MemoryBucket b : buckets.values()) {
             if (b.objectSize == size) {
                 long ptr = b.allocate();
                 if (ptr != 0) {
-                    return ptr;
+                    allocateMap.put(ptr, b);
+                    return new MemorySegment(null, ptr, size);
                 }
             }
         }
         MemoryBucket bucket = new MemoryBucket(size);
         buckets.put(bucket.baseAddr, bucket);
-        return bucket.allocate();
+        long ptr = bucket.allocate();
+        allocateMap.put(ptr, bucket);
+        return new MemorySegment(null, ptr, size);
     }
 
     public void free (long ptr) {
-
+        if (!allocateMap.containsKey(ptr)) {
+            throw new RuntimeException("No entry in allocateMap");
+        } 
+        MemoryBucket b = allocateMap.get(ptr);
+        allocateMap.remove(ptr);
+        b.free(ptr);
     }
 
 }

@@ -1,6 +1,6 @@
 package research;
 
 public interface MemoryAllocator {
-    long allocate (long size);
-    void free (long ptr);
+    MemorySegment allocate (long size);
+    void free (MemorySegment ms);
 }
