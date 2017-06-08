@@ -2,6 +2,8 @@ package research;
 
 import java.util.HashMap;
 import java.util.BitSet;
+import java.util.Vector;
+import java.lang.Math;
 
 public class MemoryPoolAllocator implements MemoryAllocator{
     private class MemoryBucket  {
@@ -22,7 +24,7 @@ public class MemoryPoolAllocator implements MemoryAllocator{
                 return 0;
             } else {
                 freeMap.set(index);
-                return index;
+                return index * objectSize + baseAddr;
             }
         }
 
@@ -60,6 +62,21 @@ public class MemoryPoolAllocator implements MemoryAllocator{
         MemoryBucket b = allocateMap.get(ptr);
         allocateMap.remove(ptr);
         b.free(ptr);
+    }
+
+    public static void main (String[] s) {
+        Vector<MemorySegment> list = new Vector<>();
+        MemoryAllocator alloc = new MemoryPoolAllocator();
+        for (int i = 0; i < 5; i++) {
+            long size = (long)Math.pow(2, i);
+            for (int j = 0; j < 1000; j++) {
+                list.add(alloc.allocate(size));
+            }
+        }
+
+        for (MemorySegment ms : list) {
+            alloc.free(ms);
+        }
     }
 
 }
