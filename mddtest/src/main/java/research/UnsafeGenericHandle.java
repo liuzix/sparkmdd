@@ -40,6 +40,8 @@ import java.util.Set;*/
 
 public final class UnsafeGenericHandle implements java.io.Serializable {
 
+  static MemoryAllocator allocator = new MemoryUnsafeAllocator();
+
   /* round up to multiple of 8 bytes */
   public static int calculateBitSetWidthInBytes(int numFields) {
     return ((numFields + 63)/ 64) * 8;
@@ -48,6 +50,8 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
 /*  public static int calculateFixedPortionByteSize(int index) {
     return 8 * index + calculateBitSetWidthInBytes(numFields);
   }*/
+
+  private MemorySegment mem = null;
 
   private Object baseObject;
   public Object getBaseObject() { return baseObject; }
@@ -98,8 +102,11 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
     this.bitSetWidthInBytes = calculateBitSetWidthInBytes(numFields);
     this.sizeInBytes = (int)((numFields * 8L) + this.bitSetWidthInBytes);
 
-    long memAddr = UnsafeWrapper.allocateMemory(sizeInBytes);
-    this.pointTo(null, memAddr, sizeInBytes);
+    mem = allocator.allocate(sizeInBytes);
+    this.pointTo(mem.baseObject, mem.offSet, mem.size);
+
+    //long memAddr = UnsafeWrapper.allocateMemory(sizeInBytes);
+    //this.pointTo(null, memAddr, sizeInBytes);
     
     //this.pointTo(new byte[sizeInBytes], sizeInBytes);
     //System.out.format("The required size is %d\n", sizeInBytes);
@@ -111,8 +118,10 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
     this.bitSetWidthInBytes = calculateBitSetWidthInBytes(numFields);
     this.sizeInBytes = (int)((size) + this.bitSetWidthInBytes);
 
-    long memAddr = UnsafeWrapper.allocateMemory(sizeInBytes);
-    this.pointTo(null, memAddr, sizeInBytes);
+    mem = allocator.allocate(sizeInBytes);
+    this.pointTo(mem.baseObject, mem.offSet, mem.size);
+    /*long memAddr = UnsafeWrapper.allocateMemory(sizeInBytes);
+    this.pointTo(null, memAddr, sizeInBytes);*/
     
     //this.pointTo(new byte[sizeInBytes], sizeInBytes);
     //System.out.format("The required size is %d\n", sizeInBytes);
