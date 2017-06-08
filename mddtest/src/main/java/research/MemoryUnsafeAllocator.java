@@ -7,6 +7,6 @@ public class MemoryUnsafeAllocator implements MemoryAllocator {
     }
 
     public void free (MemorySegment ms) {
-        return UnsafeWrapper.freeMemory(ms.offSet);
+        UnsafeWrapper.freeMemory(ms.offSet);
     }
 }

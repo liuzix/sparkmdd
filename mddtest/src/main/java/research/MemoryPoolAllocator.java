@@ -52,7 +52,8 @@ public class MemoryPoolAllocator implements MemoryAllocator{
         return new MemorySegment(null, ptr, size);
     }
 
-    public void free (long ptr) {
+    public void free (MemorySegment ms) {
+        long ptr = ms.offSet;
         if (!allocateMap.containsKey(ptr)) {
             throw new RuntimeException("No entry in allocateMap");
         } 
