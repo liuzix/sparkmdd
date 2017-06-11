@@ -36,8 +36,14 @@ import java.util.Set;*/
 
 
 public final class UnsafeGenericHandle implements java.io.Serializable {
+    private static ThreadLocal<MemoryAllocator> manager = new ThreadLocal<MemoryAllocator>();;
 
-  static MemoryAllocator manager = new MemoryPoolAllocator();
+    private void initMemoryAlloc () {
+        if (manager.get() == null) {
+            manager.set(new MemoryGCAllocator());
+        }
+    }
+
 
   /* round up to multiple of 8 bytes */
   public static int calculateBitSetWidthInBytes(int numFields) {
@@ -89,17 +95,19 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
     this.sizeInBytes = 0;
     this.baseObject = null;
     this.baseOffset = 0;
+    initMemoryAlloc();
   }
 
   /**
    * Creates an empty UnsafeGenericHandle from a byte array with specified numFields.
    */
   public UnsafeGenericHandle(int numFields) {
+      initMemoryAlloc();
     this.numFields = numFields;
     this.bitSetWidthInBytes = calculateBitSetWidthInBytes(numFields);
     this.sizeInBytes = (int)((numFields * 8L) + this.bitSetWidthInBytes);
 
-    mem = manager.allocate(sizeInBytes);
+    mem = manager.get().allocate(sizeInBytes);
     this.pointTo(mem.baseObject, mem.offSet, (int)mem.size);
 
     //long memAddr = UnsafeWrapper.allocateMemory(sizeInBytes);
@@ -111,11 +119,12 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
   }
 
   public UnsafeGenericHandle(int numFields, int size) {
+      initMemoryAlloc();
     this.numFields = numFields;
     this.bitSetWidthInBytes = calculateBitSetWidthInBytes(numFields);
     this.sizeInBytes = (int)((size) + this.bitSetWidthInBytes);
 
-    mem = manager.allocate(sizeInBytes);
+    mem = manager.get().allocate(sizeInBytes);
     this.pointTo(mem.baseObject, mem.offSet, (int)mem.size);
     /*long memAddr = UnsafeWrapper.allocateMemory(sizeInBytes);
     this.pointTo(null, memAddr, sizeInBytes);*/
@@ -159,16 +168,17 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
 
     
 
-    MemorySegment new_mem = manager.allocate(final_length);
+    MemorySegment new_mem = manager.get().allocate(final_length);
 
 
-    UnsafeWrapper.copyMemory(null, baseOffset, 
+    UnsafeWrapper.copyMemory(baseObject, baseOffset,
                              new_mem.baseObject, new_mem.offSet, 
                              sizeInBytes);
     UnsafeWrapper.copyMemory(arr, UnsafeWrapper.DOUBLE_ARRAY_OFFSET, 
                              new_mem.baseObject, new_mem.offSet + arr_offset,
                              arr_size);
-    manager.free(mem);
+    manager.get().free(mem);
+    //mem = new_mem;
     baseObject = new_mem.baseObject;
     sizeInBytes = (int)final_length;
 
@@ -196,7 +206,7 @@ public final class UnsafeGenericHandle implements java.io.Serializable {
   }
 
   public void free() {
-    manager.free(mem);
+    manager.get().free(mem);
     mem = null;
     /*if (baseObject == null) {
       UnsafeWrapper.freeMemory(baseOffset);

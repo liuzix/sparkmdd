@@ -87,57 +87,66 @@ class Wide() extends java.io.Serializable {
   var field27: Double = 0
 }
 
-class ArrPlayer() extends java.io.Serializable {
+class ArrPlayer(arraySize : Int) extends java.io.Serializable {
   @BeanProperty var height: Double = 0.0
-  @BeanProperty var vec: Array[Double] = (0.0 until 1000.0 by 1.0).toArray
+  @BeanProperty var vec: Array[Double] = (0.0 until arraySize.toDouble by 1.0).toArray
 }
 
 
 
 object MDDTestSuite {
 
-  def test0(dataSize: Int = 1000, numLoops: Int = 100) = {
+  def test0(dataSize: Int = 1000, numLoops: Int = 100, outerLoops: Int = 1, arraySize: Int = 10000) = {
     val conf = new SparkConf().setAppName("MDD Test 1")
     var sc = new SparkContext(conf)
-    var rdd = sc.parallelize( List.fill(dataSize)(new ArrPlayer) )
+    var rdd = sc.parallelize(List.fill(dataSize)(new ArrPlayer(arraySize)))
     /*var rdd = sc.parallelize((0 until 100).map { index =>
       new ArrPlayer()
     })*/
+    printf("datasize = %d, numloops = %d, arraysize = %d\n", dataSize, numLoops * outerLoops, arraySize);
 
     val mdd = new UserMDD[ArrPlayer]
     mdd.copyIn(rdd)
-    for (i <- 0 until numLoops) {
-      mdd.inPlace { elem =>
-        elem.setDouble(0, elem.getInt(0) + 1)
-        elem
-      }
-    }
 
+    //for (j <- 0 until outerLoops) {
+      for (i <- 0 until numLoops) {
+        mdd.inPlace { elem =>
+          elem.setDouble(0, elem.getInt(0) + 1)
+          elem
+        }
+      }
     println("MDD:")
     StopWatch.start()
-    var num = mdd.rDD.count()
+      var num = mdd.rDD.count()
+      //mdd.rDD = mdd.rDD.cache()
+    //}
     StopWatch.stop()
 
+
     sc.stop()
+    System.gc()
     sc = new SparkContext(conf)
-    rdd = sc.parallelize( List.fill(dataSize)(new ArrPlayer) )
+    rdd = sc.parallelize( List.fill(dataSize)(new ArrPlayer(arraySize)) )
 
-    for (i <- 0 until numLoops) {
-      rdd = rdd.map { elem =>
-        val newElem = new ArrPlayer()
-        newElem
+
+    //for (j <- 0 until outerLoops) {
+      for (i <- 0 until numLoops) {
+        rdd = rdd.map { elem =>
+          val newElem = new ArrPlayer(arraySize)
+          newElem
+        }
       }
-    }
-
-
     println("Stock:")
     StopWatch.start()
-    num = rdd.count()
+      num = rdd.count()
+      //rdd = rdd.cache()
+
+    //}
     StopWatch.stop()
 
     
     sc.stop()
-
+    System.gc()
   }
 
   /* we have 3 varibles:
@@ -149,7 +158,7 @@ object MDDTestSuite {
 
 
   /* test 1: time vs numLoops. numFields constant */
-  def test1[T <: AnyRef](fac: ()=> T, dataSize: Int = 100000, numLoops: Int = 200)(implicit tag : ClassTag[T]) = {
+  def test1[T <: AnyRef](fac: ()=> T, dataSize: Int = 100000, numLoops: Int = 200, outerLoops: Int = 1)(implicit tag : ClassTag[T]) = {
     /* note too many loops could cause stackOverflow */
     val conf = new SparkConf().setAppName("MDD Test 1")
     var sc = new SparkContext(conf)
@@ -166,16 +175,19 @@ object MDDTestSuite {
       fac()
     })
 
-    for (i <- 0 until numLoops) {
-      rdd = rdd.map { elem =>
-        val newElem = fac()
-        newElem
-      }
-    }
-    /* force execution */
     println("Stock:")
     StopWatch.start()
-    var num = rdd.count()
+    for (j <- 0 until outerLoops) {
+      for (i <- 0 until numLoops) {
+        rdd = rdd.map { elem =>
+          val newElem = fac()
+          newElem
+        }
+      }
+
+      rdd.cache()
+      rdd.count()
+    }
     StopWatch.stop()
 
     sc.stop()
@@ -186,15 +198,18 @@ object MDDTestSuite {
 
     val mdd = new UserMDD[T]
     mdd.copyIn(rdd)
-    for (i <- 0 until numLoops) {
-      mdd.inPlace { elem =>
-        elem.setDouble(0, elem.getInt(0) + 1)
-        elem
-      }
-    }
     println("MDD:")
     StopWatch.start()
-    num = mdd.rDD.count()
+    for (j <- 0 until outerLoops) {
+      for (i <- 0 until numLoops) {
+        mdd.inPlace { elem =>
+          elem.setDouble(0, elem.getInt(0) + 1)
+          elem
+        }
+      }
+      mdd.rDD.cache()
+      mdd.rDD.count()
+    }
     StopWatch.stop()
 
 
@@ -302,21 +317,11 @@ object MDDTestSuite {
 
 object TestMDD {
   def main(args: Array[String]): Unit = {
-    for (i <- 0 until 7) {
-      println("Type: Narrow")
-      (0 to 4).foreach {j => MDDTestSuite.test1(TestClass.facN,10000 * pow(2, i).toInt, 50 * j) }
-    }
 
-    for (i <- 0 until 7) {
-      println("Type: Medium")
-      (0 to 4).foreach {j => MDDTestSuite.test1(TestClass.facM,10000 * pow(2, i).toInt, 50 * j) }
-    }
-
-    for (i <- 0 until 7) {
-      println("Type: Wide")
-      (0 to 4).foreach {j => MDDTestSuite.test1(TestClass.facW,10000 * pow(2, i).toInt, 50 * j) }
-    }
+    //(0 until 6).foreach(i => MDDTestSuite.test0(1000, 100,1, 2000*pow(2,i).toInt))
     //MDDTestSuite.test0()
+    (0 until 10).foreach(i => MDDTestSuite.test0(5000, 100, 1, 5000*i))
+    //(0 until 15).foreach(i => MDDTestSuite.test0(1000, 50, i, 20000))
   }
 
 }

@@ -1,9 +1,12 @@
 package research;
 
 import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.BitSet;
 import java.util.Vector;
 import java.lang.Math;
+import java.util.concurrent.locks.Lock;
 
 public class MemoryPoolAllocator implements MemoryAllocator{
     private class MemoryBucket  {
@@ -13,14 +16,15 @@ public class MemoryPoolAllocator implements MemoryAllocator{
         private java.util.BitSet freeMap;
         MemoryBucket (long _objectSize) {
             objectSize = _objectSize;
-            poolSizeBytes = objectSize * 4096;
+            poolSizeBytes = objectSize * 1024;
             baseAddr = UnsafeWrapper.allocateMemory(poolSizeBytes);
-            freeMap = new java.util.BitSet(4096);
+            freeMap = new java.util.BitSet(1024);
         }
 
         long allocate () {
             int index = freeMap.nextClearBit(0);
-            if (index >= 4096) {
+
+            if (index >= 1024) {
                 return 0;
             } else {
                 freeMap.set(index);
@@ -34,8 +38,8 @@ public class MemoryPoolAllocator implements MemoryAllocator{
         }
     }
 
-    private HashMap<Long, MemoryBucket> buckets = new HashMap<>();
-    private HashMap<Long, MemoryBucket> allocateMap = new HashMap<>();
+    private Map<Long, MemoryBucket> buckets = new HashMap<>();
+    private Map<Long, MemoryBucket> allocateMap = new HashMap<>();
 
     public MemorySegment allocate (long size) {
         for (MemoryBucket b : buckets.values()) {
