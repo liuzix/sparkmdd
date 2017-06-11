@@ -210,8 +210,9 @@ public final class UnsafeWrapper {
                                 Object dst, long dstOffset, 
                                 long length) 
   {
+    _UNSAFE.copyMemory(src, srcOffset, dst, dstOffset, length);
     // check relative position in case of overlapping
-    if (dstOffset < srcOffset) {
+    /*if (dstOffset < srcOffset) {
       // copy forward
       while (length > 0) {
         long size = Math.min(length, UNSAFE_COPY_THRESHOLD);
@@ -231,7 +232,7 @@ public final class UnsafeWrapper {
         _UNSAFE.copyMemory(src, srcOffset, dst, dstOffset, size);
         length -= size;
       }
-    }
+    }*/
   }
 
   /**
